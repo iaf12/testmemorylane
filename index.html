@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f2f2f2;
+        }
+
+        #chatContainer {
+            width: 400px;
+            max-width: 100%;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chatOutput {
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chatMessage {
+            margin-bottom: 10px;
+        }
+
+        .userMessage {
+            text-align: right;
+        }
+
+        .userMessage span,
+        .botMessage span {
+            display: inline-block;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .userMessage span {
+            background: #0084ff;
+            color: #fff;
+        }
+
+        .botMessage span {
+            background: #e4e6eb;
+            color: #333;
+        }
+
+        #chatInputContainer {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        #chatInput {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #sendButton {
+            padding: 10px;
+            font-size: 16px;
+            margin-left: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #0084ff;
+            color: #fff;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="chatContainer">
+        <div id="chatOutput"></div>
+        <div id="chatInputContainer">
+            <input type="text" id="chatInput" placeholder="Type your story or ask for a book..." />
+            <button id="sendButton" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const apiBaseURL = "http://127.0.0.1:8000"; // Backend API base URL
+
+        function addMessageToChat(message, isUser = true) {
+            const chatOutput = document.getElementById("chatOutput");
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("chatMessage");
+            messageDiv.classList.add(isUser ? "userMessage" : "botMessage");
+
+            const messageText = document.createElement("span");
+            messageText.textContent = message;
+            messageDiv.appendChild(messageText);
+
+            chatOutput.appendChild(messageDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight; // Scroll to the bottom
+        }
+
+        async function sendMessage() {
+            const chatInput = document.getElementById("chatInput");
+            const userMessage = chatInput.value.trim();
+
+            if (userMessage === "") {
+                return;
+            }
+
+            // Display user message
+            addMessageToChat(userMessage, true);
+            chatInput.value = ""; // Clear the input
+
+            let data;
+            if (userMessage.toLowerCase().includes("give me the book")) {
+                // Request for the book
+                data = { stories: ["give me the book"] };
+            } else {
+                // Regular story request
+                data = { stories: [userMessage] };
+            }
+
+            try {
+                const response = await fetch(`${apiBaseURL}/analyze_story`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                let botMessage;
+
+                if (result.book) {
+                    botMessage = result.book;
+                } else if (result.analyses) {
+                    botMessage = result.analyses.join("\n");
+                } else {
+                    botMessage = "I'm sorry, I couldn't process that.";
+                }
+
+                // Display bot message
+                addMessageToChat(botMessage, false);
+            } catch (error) {
+                console.error("Error:", error);
+                addMessageToChat("An error occurred. Please try again.", false);
+            }
+        }
+
+        document.getElementById("chatInput").addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+
+</body>
+
+</html>
